@@ -19,9 +19,10 @@ class ChunkedController < ApplicationController
 
   def stream_data(stream)
     3.times{|i|
-      stream.write "chunked line #{i}\n"
-      sleep 0.5
+      # We write a big chunk so that we can also see the streaming happening on Chrome.
+      # Otherwise we'd have to check with curl or some similar tool.
+      stream.write "big chunked line #{i}" * 100 + "\n\n"
+      sleep 1
     }
-    stream.close
   end
 end
