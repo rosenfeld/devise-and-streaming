@@ -5,4 +5,11 @@ module StreamingSupport
   # def self.included(base)
   #   base.include ActionController::Live
   # end
+
+  def process(*args)
+    super
+  rescue UncaughtThrowError => e
+    throw :warden if e.message == 'uncaught throw :warden'
+    raise e
+  end
 end
