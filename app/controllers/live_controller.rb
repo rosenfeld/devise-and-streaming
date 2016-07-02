@@ -1,3 +1,3 @@
 class LiveController < ChunkedController
-  include ActionController::Live
+  include StreamingSupport
 end
