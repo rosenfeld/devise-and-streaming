@@ -1,14 +1,3 @@
-GIT
-  remote: git://github.com/plataformatec/devise.git
-  revision: 245b1f9de0b3386b7913e14b60ea24f43b77feb0
-  specs:
-    devise (4.2.0)
-      bcrypt (~> 3.0)
-      orm_adapter (~> 0.1)
-      railties (>= 4.1.0, < 5.1)
-      responders
-      warden (~> 1.2.3)
-
 GEM
   remote: https://rubygems.org/
   specs:
@@ -55,6 +44,12 @@ GEM
     byebug (9.0.5)
     concurrent-ruby (1.0.2)
     debug_inspector (0.0.2)
+    devise (4.2.0)
+      bcrypt (~> 3.0)
+      orm_adapter (~> 0.1)
+      railties (>= 4.1.0, < 5.1)
+      responders
+      warden (~> 1.2.3)
     erubis (2.7.0)
     ffi (1.9.10)
     globalid (0.3.6)
@@ -143,7 +138,7 @@ PLATFORMS
 
 DEPENDENCIES
   byebug
-  devise!
+  devise
   listen (~> 3.0.5)
   puma (~> 3.0)
   rails (~> 5.0.0)
