@@ -4,8 +4,8 @@ class LiveController < ChunkedController
   private
 
   def stream_data(stream)
-    chunked do
-      super
+    chunked do |stream|
+      super stream
       raise "Simulated error"
     end
   end

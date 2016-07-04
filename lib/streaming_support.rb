@@ -29,8 +29,33 @@ module StreamingSupport
 #    end
   end
 
-  def chunked(&block)
+  def chunked(delay_headers: false, &block)
     response.commit!
+    if request.env['rack.hijack?']
+      hijack_chunked({delay_headers: delay_headers}, &block)
+    else
+      regular_chunked &block
+    end
+  end
+
+  def send_headers(stream)
+    stream.write "HTTP/1.1 200 OK\n"
+    stream.write "#{response.headers.map{|k, v| "#{k}: #{v}"}.join("\n")}\n\n"
+    stream.flush
+  end
+
+  private
+
+  def hijack_chunked(delay_headers: false, &block)
+    request.env['rack.hijack'].call
+    stream = request.env['rack.hijack_io']
+    send_headers stream unless delay_headers
+    yield stream
+  ensure
+    stream.close if stream
+  end
+
+  def regular_chunked(&block)
     Thread.start do
       begin
         yield response.stream
