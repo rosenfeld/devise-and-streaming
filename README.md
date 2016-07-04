@@ -74,16 +74,31 @@ The obvious question is then, "so, why isn't Live always included?". After all,
 the Rails users wouldn't have to worry about enabling streaming, it would be simply
 enabled by default for when you want it. One might think that it would be related
 to performance concerns but I suspect that the main problem is that this is not
-issues free. Some middleware assume that the inner middlewares have finished
+issues free.
+
+Some middleware assume that the inner middlewares have finished
 (some of them actually depend on them to be finished) so that they can modify the
 original response or headers. This kind of post-processing middlewares do not work
-well with streamed responses. This includes caching middlewares (handling ETag or
+well with streamed responses.
+
+This includes caching middlewares (handling ETag or
 last-modified headers), monitoring middlewares injecting some HTML (like NewRelic
 does automatically by default for example) and many other. Those middlewares will
 block the stack until the response is fully finished which breaks the desired
 streamed output. Some of them will check some conditions and skip this blocking
 behavior under certain circumstances but some will still cause some hard to debug
 issues or they may be even conceptually broken.
+
+There are also some middlewares that expect the controller's action code to run
+in the same thread due to the implementation details surrounding them. For example,
+if a sandboxed database environment is implemented as a middleware that runs the
+following layer inside a transaction block that will be rolled back, and if the
+connection is automatically fetched using the current thread id as the access key,
+then spawning a new thread would run in a different connection and out of the
+middleware's transaction, breaking the sandboxed environment. I think ActiveRecord
+fetches the connection from thread locals and since ActionController::Live will
+copy those locals to the new spawned thread it probably works, but I'm just
+warning that spawning threads may break several middlewares in unexpected ways.
 
 This includes the behavior of Warden communication. So, enabling Live in all
 Rails controllers would have the immediate effect of breaking most current
