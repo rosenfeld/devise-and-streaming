@@ -30,26 +30,32 @@ was first created in a successful attempt to add a standard API web servers and
 frameworks could agree and build on top of it. This is a great achievement but
 Rack should evolve to better handle streamed responses.
 
+Aaron Patterson has tried to work on [another API](https://github.com/tenderlove/the_metal)
+for Rack that would improve support for streaming but it seems it would break middlewares,
+and currently it seems [the metal is dead](http://rebuild.fm/122/). Sounds like
+HTTP 2.0 multiplexing requires yet more changes, so maybe we'll get proper support
+in Rack 3.0, which should be backward compatible and keep supporting existing middlewares,
+by providing alternative APIs, but that seems like it could take years to get there.
+
 Currently, the way Rack applications handle streaming is by implementing an object
 that responds to each that will yield a chunk at a time until the stream is finished,
 which is usually implemented by providing the user an API similar to a proper stream
-object as properly implemented in other languages.
+object as properly implemented in other languages. A few years ago an alternative
+system has been suggested, which became known as the
+[hijacking API](http://www.rubydoc.info/github/rack/rack/file/SPEC#Hijacking). The
+[Phusion team covered it when it was introduced](http://old.blog.phusion.nl/2013/01/23/the-new-rack-socket-hijacking-api/)
+but I think the "partial hijacking" section is no longer valid.
 
-Since the web servers can't provide the actual socket stream object to Rack's set of
-standard API. They could embed it in the environment but since this is not defined
-in the API, each compliant Rack web server could add it to a different key or they
-could not even share it at all.
-
-Rack was designed on top of a middleware stack which means any processing will only
-start after all middlewares have been called and returned, since middlewares don't
-have access to the socket stream. That's why Rails had to resort to using threads
-to handle streamed/chunked responses. But it can offer other alternative
+Rack was designed on top of a middleware stack which means any response will only
+start after all middlewares have been called and returned (except if hijacking is used),
+since middlewares don't have access to the socket stream. That's why Rails had to resort
+to using threads to handle streamed/chunked responses. But it can offer other alternative
 implementations that would be more friendly to how Warden and Devise work as
 demonstrated in this application, which I'll discuss in the next section.
 
 Before talking about Rails current options, I'd like to stress a bit more the
-problem with Rack, and consequently how it affects web development in Ruby in a
-negative way, when compared to how this is done in most other languages.
+problem with Rack without hijacking, and consequently how it affects web development
+in Ruby in a negative way, when compared to how this is done in most other languages.
 
 If we compare to how streaming is handled in Grails (and most JVM based frameworks)
 , or most of the main web frameworks in other languages, it couldn't be any simpler.
@@ -61,7 +67,9 @@ controllers. The request thread or process does not have to spawn another thread
 to handle streaming, so there's nothing special with such controllers.
 
 It would be awesome if Ruby web applications had the option to use a more flexible
-API, more friendly to streamed responses, including SSE and websockets.
+API, more friendly to streamed responses, including SSE and websockets. Hijacking
+currently seems to be considered a second-class citizen since they are usually
+ignored by major web frameworks like Rails itself.
 
 ## The Rails case (or how to work around the current state in Rack apps)
 
@@ -147,12 +155,30 @@ end
 ```
 
 This way, the thread would only be spawned after the authentication check is
-finished.
+finished. Or `streamed` could use `env['rack.hijack']` when available instead
+of spawning a new thread.
+
+### Use Rack hijacking
+
+Another alternative might be to support streaming only for web servers supporting
+Rack hijacking. This way, the stream API could work seamless, without requiring
+`ActionController::Live` to be included. When `response.stream` is used, it would
+use `env['rack.hijack_io']` if available or either buffer the responses and send
+them at once or raise some error, based on some configuration accordingly to the
+user's preferences, as sometimes streaming is not only an optimization but a
+requirement that shouldn't be silently ignored. The same behavior would apply when
+HTTP 1.0 is used for example.
+
+Or another module such as `ActionController::LiveHijacking` could be created so
+that Rails users would have that option for a while until Rails thinks this
+approach is stable enough to be enabled by default.
 
 ## Conclusion
 
 I'd like to propose two discussions around this issue. One would be a better
-solution for Rack applications to get to talk directly to the response. And
+solution for Rack applications to get to talk directly to the response (
+or discussing an strategy for making Rack hijacking a first-class citizen
+and probably call it something better than hijack). And
 the other solution would be for Rails to improve support for streaming
 applications by better handling cases like the Warden/Devise issue. I've
 copied this text with some minor changes to [my site](http://rosenfeld.herokuapp.com/en/articles/ruby-rails/2016-07-02-the-sad-state-of-streaming-in-ruby-web-applications)
